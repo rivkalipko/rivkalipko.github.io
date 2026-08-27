@@ -609,7 +609,9 @@ button { cursor: pointer; }
 }
 .post-article > .subscribe {
   max-width: var(--measure);
-  margin-top: 28px;
+  margin-top: 16px;
+  padding-top: 0;
+  border-top: 0;
 }
 .subscribe-form {
   position: relative;

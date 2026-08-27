@@ -607,11 +607,18 @@ button { cursor: pointer; }
   padding-top: 32px;
   border-top: 1px solid var(--border);
 }
-.post-article > .subscribe {
+.post-end {
   max-width: var(--measure);
-  margin-top: 16px;
-  padding-top: 0;
-  border-top: 0;
+  margin: 48px auto 0;
+  display: grid;
+  gap: 12px;
+}
+.post-end .back-to-blog { margin: 0; }
+.post-end .subscribe {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 .subscribe-form {
   position: relative;

@@ -9,6 +9,8 @@ const OUTPUT = path.join(ROOT, "_site");
 const MEDIA_SOURCE = path.join(ROOT, "src", "media");
 const SITE_URL = process.env.SITE_URL || "https://staging.rivka.me";
 const WORDPRESS_URL = "https://rivka.me";
+const STYLES_HREF = `/assets/styles.css?${Math.trunc(fs.statSync(path.join(ROOT, "src", "static", "styles.css")).mtimeMs)}`;
+const SCRIPT_HREF = `/assets/site.js?${Math.trunc(fs.statSync(path.join(ROOT, "src", "static", "site.js")).mtimeMs)}`;
 
 const readJson = (name) => JSON.parse(fs.readFileSync(path.join(SOURCE, name), "utf8"));
 const generalPosts = readJson("posts.json");
@@ -259,7 +261,7 @@ function layout({ route, title, description, body, image = "", type = "website",
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;650;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="${STYLES_HREF}">
   <link rel="alternate" type="application/rss+xml" title="Rivka Lipkovitz" href="/feed.xml">
   <meta property="og:type" content="${type}">
   <meta property="og:site_name" content="Rivka Lipkovitz">
@@ -278,7 +280,7 @@ function layout({ route, title, description, body, image = "", type = "website",
   ${header()}
   <main id="content">${body}</main>
   ${footer()}
-  <script src="/assets/site.js" defer></script>
+  <script src="${SCRIPT_HREF}" defer></script>
 </body>
 </html>`;
 }
@@ -385,8 +387,10 @@ function postBody(post) {
         <p class="post-meta">${postMeta(post)}</p>
       </header>
       <div class="prose">${cleanContent(editedPostContent(post))}</div>
-      <nav class="back-to-blog"><a href="/blog/">← Back to the blog</a></nav>
-      ${subscribeBlock()}
+      <div class="post-end">
+        <nav class="back-to-blog"><a href="/blog/">← Back to the blog</a></nav>
+        ${subscribeBlock()}
+      </div>
     </article>
     ${readNext(post)}
   </div>`;

@@ -611,15 +611,6 @@ button { cursor: pointer; }
   max-width: var(--measure);
   margin-top: 28px;
 }
-.subscribe h2 {
-  margin-bottom: 12px;
-  font-size: var(--h3-size);
-}
-.subscribe > p {
-  max-width: 56ch;
-  margin-bottom: 22px;
-  color: var(--muted);
-}
 .subscribe-form {
   position: relative;
   display: flex;

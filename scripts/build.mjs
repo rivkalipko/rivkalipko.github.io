@@ -309,9 +309,7 @@ function archiveBody(title, posts) {
 }
 
 function subscribeBlock() {
-  return `<section class="subscribe" id="subscribe" aria-labelledby="subscribe-title">
-    <h2 id="subscribe-title">Subscribe</h2>
-    <p>Get an email when I publish something new. Nothing else, ever.</p>
+  return `<section class="subscribe" id="subscribe" aria-label="Subscribe">
     ${SUBSCRIBE_ENDPOINT ? `<form class="subscribe-form" action="${escapeHtml(SUBSCRIBE_ENDPOINT)}" method="post" data-subscribe-form>
       <label class="screen-reader-text" for="subscribe-email">Email address</label>
       <input id="subscribe-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>

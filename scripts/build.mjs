@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ARTICLE_EDITS, GLOSSARY_EDITS } from "../source/editorial-edits.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = path.join(ROOT, "source", "wordpress");
@@ -14,14 +15,26 @@ const generalPosts = readJson("posts.json");
 const stsPosts = readJson("sts-posts.json");
 const pages = readJson("pages.json");
 const categories = readJson("categories.json");
-const tags = readJson("tags.json");
 const glossary = fs.existsSync(path.join(SOURCE, "glossary.json")) ? readJson("glossary.json") : [];
 
 const uniquePosts = new Map();
 for (const post of [...generalPosts, ...stsPosts]) uniquePosts.set(post.id, post);
 const allPosts = [...uniquePosts.values()].sort((a, b) => new Date(b.date_gmt || b.date) - new Date(a.date_gmt || a.date));
 const categoryById = new Map(categories.map((category) => [category.id, category]));
-const tagById = new Map(tags.map((tag) => [tag.id, tag]));
+const articleEditsBySlug = new Map(ARTICLE_EDITS.map((entry) => [entry.slug, entry.replacements]));
+const articleSlugs = new Set(allPosts.map((post) => post.slug));
+const missingEditorialReviews = allPosts.filter((post) => !articleEditsBySlug.has(post.slug));
+const orphanedEditorialReviews = ARTICLE_EDITS.filter((entry) => !articleSlugs.has(entry.slug));
+if (missingEditorialReviews.length || orphanedEditorialReviews.length) {
+  throw new Error(`Editorial review index is out of sync. Missing: ${missingEditorialReviews.map((post) => post.slug).join(", ") || "none"}. Orphaned: ${orphanedEditorialReviews.map((entry) => entry.slug).join(", ") || "none"}.`);
+}
+
+const CATEGORY_LABELS = new Map([[1, "Other"]]);
+const MATH_HEAD = `
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css" integrity="sha384-u1zONI5gPXUx0UKI62c75/zww972y0v2rSK5ZYlVdS6xEuWDeZWUI66v6t1gvlXJ" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.js" integrity="sha384-ykMNcWQhhTUb0YV9SPpPUFURHZ+tWmubkakGBP+OgNK/UXdO2gtzglWx0Rj9hnO3" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"></script>`;
+const SUBSCRIBE_ENDPOINT = process.env.SUBSCRIBE_ENDPOINT || "";
 
 function decodeEntities(value = "") {
   const named = {
@@ -107,6 +120,24 @@ function cleanImageTag(tag) {
   return output;
 }
 
+function applyValidatedReplacements(value, replacements, label) {
+  let output = value;
+  for (const [from, to] of replacements || []) {
+    if (!output.includes(from)) throw new Error(`Editorial edit did not match in ${label}: ${from}`);
+    output = output.replace(from, to);
+  }
+  return output;
+}
+
+function editedPostContent(post) {
+  return applyValidatedReplacements(post.content.rendered, articleEditsBySlug.get(post.slug), post.slug);
+}
+
+// KaTeX is three CDN requests, so only the articles that actually carry math pay for it.
+function hasMath(html) {
+  return /\\\(|\\\[/.test(html);
+}
+
 function cleanContent(value = "") {
   return value
     .replace(/<!--[\s\S]*?-->/g, "")
@@ -119,6 +150,10 @@ function cleanContent(value = "") {
     .replace(/https?:\/\/rivka\.me\//gi, "/")
     .replace(/\s(?:data-recalc-dims|data-image-caption|data-image-description)=(['"])[\s\S]*?\1/gi, "")
     .replace(/<p>\s*<\/p>/gi, "")
+    .replace(/\bp\s+-values\b/g, "p-values")
+    .replace(/\bp\s+-value\b/g, "p-value")
+    .replace(/often a p-value &lt; 0\.05/g, "often a p-value &gt; 0.05")
+    .replace(/\b(\d{4})-(\d{4})\b/g, "$1–$2")
     .trim();
 }
 
@@ -131,8 +166,8 @@ function recordCategories(post) {
   return (post.categories || []).map((id) => categoryById.get(id)).filter(Boolean);
 }
 
-function recordTags(post) {
-  return (post.tags || []).map((id) => tagById.get(id)).filter(Boolean);
+function categoryLabel(category) {
+  return CATEGORY_LABELS.get(category.id) || category.name;
 }
 
 function formatDate(post) {
@@ -145,7 +180,8 @@ function isoDate(post) {
 }
 
 function descriptionOf(record, maximum = 36) {
-  return truncateWords(stripHtml(record?.excerpt?.rendered || record?.content?.rendered || ""), maximum);
+  const articleContent = articleEditsBySlug.has(record?.slug) ? editedPostContent(record) : record?.content?.rendered;
+  return truncateWords(stripHtml(record?.excerpt?.rendered || articleContent || ""), maximum);
 }
 
 function ensureDir(directory) {
@@ -191,7 +227,6 @@ function footer() {
     <footer class="site-footer">
       <div class="footer-inner">
         <p>© ${new Date().getUTCFullYear()} Rivka Lipkovitz</p>
-        <p><a href="/feed.xml">RSS</a><span aria-hidden="true"> · </span><a href="https://github.com/rivkalipko">GitHub</a></p>
       </div>
     </footer>
     <dialog class="search-dialog" id="search-dialog">
@@ -212,7 +247,7 @@ function layout({ route, title, description, body, image = "", type = "website",
   <meta property="article:published_time" content="${escapeHtml(published)}">
   <meta property="article:modified_time" content="${escapeHtml(modified || published)}">` : "";
   return `<!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -236,7 +271,7 @@ function layout({ route, title, description, body, image = "", type = "website",
   <meta name="twitter:title" content="${escapeHtml(pageTitle)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${socialImage}">${articleMeta}
-  <script>document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"</script>
+  <script>document.documentElement.classList.replace("no-js","js");document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"</script>
   ${extraHead}
 </head>
 <body class="${escapeHtml(bodyClass)}">
@@ -249,12 +284,13 @@ function layout({ route, title, description, body, image = "", type = "website",
 }
 
 function categoryLinks(post) {
-  return recordCategories(post).map((category) => `<a href="/${category.slug}/">${escapeHtml(category.name)}</a>`).join(", ");
+  return recordCategories(post).map((category) => `<a href="/blog/?category=${encodeURIComponent(category.slug)}">${escapeHtml(categoryLabel(category))}</a>`).join(", ");
 }
 
 function postCard(post) {
   const image = featuredImage(post);
-  return `<article class="post-card">
+  const categorySlugs = recordCategories(post).map((category) => category.slug).join(" ");
+  return `<article class="post-card" data-categories="${escapeHtml(categorySlugs)}">
     ${image ? `<a class="post-card-image" href="/${post.slug}/" tabindex="-1" aria-hidden="true"><img src="${escapeHtml(image)}" alt="" loading="lazy"></a>` : ""}
     <div class="post-card-body">
       <h2><a href="/${post.slug}/">${escapeHtml(titleOf(post))}</a></h2>
@@ -265,32 +301,60 @@ function postCard(post) {
   </article>`;
 }
 
-function pagination(current, pageCount, base = "/blog/") {
-  if (pageCount <= 1) return "";
-  const href = (page) => page === 1 ? base : `${base}page/${page}/`;
-  const items = Array.from({ length: pageCount }, (_, index) => index + 1).map((page) =>
-    page === current ? `<span aria-current="page">${page}</span>` : `<a href="${href(page)}">${page}</a>`
-  ).join("");
-  return `<nav class="pagination" aria-label="Archive pages">
-    ${current > 1 ? `<a class="pagination-wide" href="${href(current - 1)}">← Previous</a>` : "<span></span>"}
-    <div>${items}</div>
-    ${current < pageCount ? `<a class="pagination-wide" href="${href(current + 1)}">Next →</a>` : "<span></span>"}
-  </nav>`;
-}
-
-function archiveBody(title, intro, posts, options = {}) {
+function archiveBody(title, posts) {
   return `<section class="archive-shell">
-    <header class="archive-header">
-      <p class="eyebrow">${escapeHtml(options.eyebrow || "Writing")}</p>
-      <h1>${escapeHtml(title)}</h1>
-      ${intro ? `<p>${escapeHtml(intro)}</p>` : ""}
-    </header>
+    <header class="archive-header"><h1>${escapeHtml(title)}</h1></header>
     <div class="post-list">${posts.map(postCard).join("\n") || "<p>No posts yet.</p>"}</div>
   </section>`;
 }
 
+function subscribeBlock() {
+  return `<section class="subscribe" id="subscribe" aria-labelledby="subscribe-title">
+    <h2 id="subscribe-title">Subscribe</h2>
+    <p>Get an email when I publish something new. Nothing else, ever.</p>
+    ${SUBSCRIBE_ENDPOINT ? `<form class="subscribe-form" action="${escapeHtml(SUBSCRIBE_ENDPOINT)}" method="post" data-subscribe-form>
+      <label class="screen-reader-text" for="subscribe-email">Email address</label>
+      <input id="subscribe-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
+      <input class="subscribe-trap" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button type="submit">Subscribe</button>
+      <p class="subscribe-status" data-subscribe-status aria-live="polite"></p>
+    </form>` : `<p class="subscribe-status">Subscription setup is being connected.</p>`}
+  </section>`;
+}
+
+function categoryFilters() {
+  const ORDER = ["fencing", "causal-inference", "regeneron-sts", "uncategorized"];
+  const chip = (slug, label, count, pressed) =>
+    `<button type="button" data-category-filter="${escapeHtml(slug)}" aria-pressed="${pressed}">${escapeHtml(label)} <span>${count}</span></button>`;
+  const used = categories
+    .filter((category) => allPosts.some((post) => (post.categories || []).includes(category.id)))
+    .sort((a, b) => ORDER.indexOf(a.slug) - ORDER.indexOf(b.slug));
+  return [
+    chip("all", "All", allPosts.length, "true"),
+    ...used.map((category) => chip(
+      category.slug,
+      categoryLabel(category),
+      allPosts.filter((post) => (post.categories || []).includes(category.id)).length,
+      "false"
+    ))
+  ].join("");
+}
+
+function blogBody() {
+  return `<section class="archive-shell">
+    <h1 class="screen-reader-text">Blog</h1>
+    <div class="category-filters" role="group" aria-label="Filter by category">${categoryFilters()}</div>
+    <div class="post-list" data-infinite-list>${allPosts.map(postCard).join("\n")}</div>
+    <div class="infinite-loader">
+      <button class="load-more" type="button" data-load-more>Load more</button>
+      <span class="scroll-sentinel" data-scroll-sentinel aria-hidden="true"></span>
+    </div>
+    ${subscribeBlock()}
+  </section>`;
+}
+
 function readNext(currentPost) {
-  const recent = generalPosts.filter((post) => post.id !== currentPost.id).slice(0, 4);
+  const recent = allPosts.filter((post) => post.id !== currentPost.id).slice(0, 4);
   return `<aside class="read-next" aria-label="More writing">
     <div class="read-next-grid">
       <div>
@@ -299,7 +363,7 @@ function readNext(currentPost) {
       </div>
       <div>
         <h2>Categories</h2>
-        <ul>${categories.filter((category) => category.count > 0).map((category) => `<li><a href="/${category.slug}/">${escapeHtml(category.name)}</a> <span>${category.count}</span></li>`).join("")}</ul>
+        <ul>${categories.filter((category) => category.count > 0).map((category) => `<li><a href="/blog/?category=${encodeURIComponent(category.slug)}">${escapeHtml(categoryLabel(category))}</a> <span>${allPosts.filter((post) => (post.categories || []).includes(category.id)).length}</span></li>`).join("")}</ul>
       </div>
     </div>
   </aside>`;
@@ -316,16 +380,15 @@ function postMeta(post) {
 }
 
 function postBody(post) {
-  const tagsForPost = recordTags(post);
   return `<div class="post-layout">
     <article class="post-article">
       <header class="post-header">
         <h1>${escapeHtml(titleOf(post))}</h1>
         <p class="post-meta">${postMeta(post)}</p>
       </header>
-      <div class="prose">${cleanContent(post.content.rendered)}</div>
-      ${tagsForPost.length ? `<footer class="post-tags">${tagsForPost.map((tag) => `<a href="/tag/${tag.slug}/">#${escapeHtml(tag.name)}</a>`).join(" ")}</footer>` : ""}
+      <div class="prose">${cleanContent(editedPostContent(post))}</div>
       <nav class="back-to-blog"><a href="/blog/">← Back to the blog</a></nav>
+      ${subscribeBlock()}
     </article>
     ${readNext(post)}
   </div>`;
@@ -347,15 +410,21 @@ function buildHome() {
 }
 
 function buildBlog() {
-  const pageSize = 7;
-  const pageCount = Math.ceil(generalPosts.length / pageSize);
-  for (let page = 1; page <= pageCount; page += 1) {
-    const posts = generalPosts.slice((page - 1) * pageSize, page * pageSize);
-    const route = page === 1 ? "/blog/" : `/blog/page/${page}/`;
-    const title = page === 1 ? "Blog" : `Blog — Page ${page}`;
-    const body = `${archiveBody("Blog", "Notes on data, causal inference, learning, and fencing.", posts)}${pagination(page, pageCount)}`;
-    writeRoute(route, layout({ route, title, description: "Writing by Rivka Lipkovitz on data science, causal inference, learning, and fencing.", body, bodyClass: "archive-page" }));
-  }
+  const route = "/blog/";
+  writeRoute(route, layout({
+    route,
+    title: "Blog",
+    description: "Writing by Rivka Lipkovitz on data science, causal inference, learning, and fencing.",
+    body: blogBody(),
+    bodyClass: "archive-page blog-page"
+  }));
+}
+
+function buildLegacyRedirects() {
+  const target = canonical("/blog/");
+  const redirect = (route) => writeRoute(route, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0; url=${target}"><link rel="canonical" href="${target}"><title>Writing — Rivka Lipkovitz</title></head><body><p>This archive moved to <a href="${target}">the blog</a>.</p></body></html>`);
+  for (let page = 2; page <= Math.ceil(generalPosts.length / 7); page += 1) redirect(`/blog/page/${page}/`);
+  redirect("/tag/featured/");
 }
 
 function buildPosts() {
@@ -363,7 +432,7 @@ function buildPosts() {
     const route = `/${post.slug}/`;
     const description = descriptionOf(post, 34);
     const body = postBody(post);
-    const extraHead = `<script type="application/ld+json">${jsonLd({
+    const extraHead = `${hasMath(body) ? MATH_HEAD : ""}<script type="application/ld+json">${jsonLd({
       "@context": "https://schema.org",
       "@type": "BlogPosting",
       headline: titleOf(post),
@@ -393,14 +462,8 @@ function buildTaxonomies() {
   for (const category of categories.filter((item) => item.count > 0)) {
     const posts = allPosts.filter((post) => (post.categories || []).includes(category.id));
     const route = `/${category.slug}/`;
-    const body = archiveBody(category.name, `${posts.length} article${posts.length === 1 ? "" : "s"} filed here.`, posts, { eyebrow: "Category" });
-    writeRoute(route, layout({ route, title: category.name, description: `${category.name} articles by Rivka Lipkovitz.`, body, bodyClass: "archive-page" }));
-  }
-  for (const tag of tags.filter((item) => item.count > 0)) {
-    const posts = allPosts.filter((post) => (post.tags || []).includes(tag.id));
-    const route = `/tag/${tag.slug}/`;
-    const body = archiveBody(`#${tag.name}`, `${posts.length} featured article${posts.length === 1 ? "" : "s"}.`, posts, { eyebrow: "Tag" });
-    writeRoute(route, layout({ route, title: `#${tag.name}`, description: `Featured writing by Rivka Lipkovitz.`, body, bodyClass: "archive-page" }));
+    const body = archiveBody(categoryLabel(category), posts);
+    writeRoute(route, layout({ route, title: categoryLabel(category), description: `${categoryLabel(category)} articles by Rivka Lipkovitz.`, body, bodyClass: "archive-page" }));
   }
 
   const authorRoute = "/author/rivka/";
@@ -408,7 +471,7 @@ function buildTaxonomies() {
     route: authorRoute,
     title: "Rivka Lipkovitz",
     description: "All writing by Rivka Lipkovitz.",
-    body: archiveBody("Rivka Lipkovitz", `${allPosts.length} published articles.`, allPosts, { eyebrow: "Author" }),
+    body: archiveBody("Rivka Lipkovitz", allPosts),
     bodyClass: "archive-page"
   }));
 }
@@ -426,13 +489,14 @@ function buildGlossary() {
   for (const entry of glossary) {
     const route = `/glossary/${entry.slug}/`;
     const description = truncateWords(stripHtml(entry.description), 30);
-    const body = `<article class="glossary-page"><p class="eyebrow">Glossary</p><h1>${escapeHtml(entry.title)}</h1><div class="prose">${cleanContent(entry.description)}</div><p><a href="/blog/">Browse the blog →</a></p></article>`;
+    const descriptionHtml = applyValidatedReplacements(entry.description, GLOSSARY_EDITS.filter((edit) => edit.slug === entry.slug).flatMap((edit) => edit.replacements), `glossary:${entry.slug}`);
+    const body = `<article class="glossary-page"><p class="eyebrow">Glossary</p><h1>${escapeHtml(entry.title)}</h1><div class="prose">${cleanContent(descriptionHtml)}</div><p><a href="/blog/">Browse the blog →</a></p></article>`;
     writeRoute(route, layout({ route, title: entry.title, description, body, bodyClass: "standalone" }));
   }
 }
 
 function buildFeeds() {
-  const items = generalPosts.map((post) => `
+  const items = allPosts.map((post) => `
     <item>
       <title>${escapeHtml(titleOf(post))}</title>
       <link>${canonical(`/${post.slug}/`)}</link>
@@ -445,10 +509,8 @@ function buildFeeds() {
 
   const routes = [
     "/", "/blog/", "/prez/", "/author/rivka/",
-    ...generalPosts.slice(7).map((_, index) => index).filter((index) => index % 7 === 0).map((index) => `/blog/page/${Math.floor(index / 7) + 2}/`),
     ...allPosts.map((post) => `/${post.slug}/`),
     ...categories.filter((category) => category.count > 0).map((category) => `/${category.slug}/`),
-    ...tags.filter((tag) => tag.count > 0).map((tag) => `/tag/${tag.slug}/`),
     ...glossary.map((entry) => `/glossary/${entry.slug}/`)
   ];
   fs.writeFileSync(path.join(OUTPUT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...new Set(routes)].map((route) => `<url><loc>${canonical(route)}</loc></url>`).join("")}</urlset>\n`);
@@ -462,13 +524,13 @@ function buildSearch() {
     date: formatDate(post),
     categories: recordCategories(post).map((category) => category.name),
     excerpt: descriptionOf(post, 38),
-    text: truncateWords(stripHtml(post.content.rendered), 220)
+    text: truncateWords(stripHtml(editedPostContent(post)), 220)
   }));
   fs.writeFileSync(path.join(OUTPUT, "search.json"), JSON.stringify(records));
 }
 
 function buildNotFound() {
-  const body = `<section class="not-found"><p class="eyebrow">404</p><h1>That page isn’t here.</h1><p>The address may have changed, or the page may have moved.</p><p><a class="button" href="/">Go home</a> <a class="button secondary" href="/blog/">Browse the blog</a></p></section>`;
+  const body = `<section class="not-found"><p class="eyebrow">404</p><h1>Page not found</h1><p>This page may have moved or never existed.</p><p><a class="button" href="/">Home</a> <a class="button secondary" href="/blog/">Blog</a></p></section>`;
   fs.writeFileSync(path.join(OUTPUT, "404.html"), layout({ route: "/404.html", title: "Page not found", description: "Page not found.", body, bodyClass: "standalone" }));
 }
 
@@ -509,6 +571,7 @@ const mediaManifest = collectMedia();
 copyStatic();
 buildHome();
 buildBlog();
+buildLegacyRedirects();
 buildPosts();
 buildTaxonomies();
 buildPages();

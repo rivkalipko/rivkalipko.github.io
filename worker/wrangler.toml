@@ -1,0 +1,17 @@
+name = "rivka-subscribe"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+workers_dev = true
+
+# Set after `wrangler d1 create rivka-subscribers`.
+[[d1_databases]]
+binding = "DB"
+database_name = "rivka-subscribers"
+database_id = "c697bdb2-55cc-4ba1-9991-6aa5528003ff"
+
+[vars]
+ALLOWED_ORIGINS = "https://staging.rivka.me,https://rivka.me,http://127.0.0.1:4173"
+
+# EXPORT_TOKEN and IP_SALT are secrets, not vars:
+#   wrangler secret put EXPORT_TOKEN
+#   wrangler secret put IP_SALT

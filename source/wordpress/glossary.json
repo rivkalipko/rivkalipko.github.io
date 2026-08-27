@@ -1,0 +1,77 @@
+[
+  {
+    "slug": "alternative-hypothesis",
+    "title": "alternative hypothesis",
+    "description": "<p>a statement that posits there is a relationship or difference between variables, contrasting with the <span tabindex=\"0\" class=\"glossary-item-container\">null hypothesis<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">null hypothesis</span> <span class=\"glossary-item-description\">a statement in statistical testing that posits no significant difference or relationship between variables, serving as the baseline assumption until evidence suggests otherwise.</span></span></span> and tested to determine if it can be supported by evidence</p>"
+  },
+  {
+    "slug": "confidence-interval",
+    "title": "confidence interval",
+    "description": "<p>a range of values calculated from sample data that is likely to contain the true population parameter, providing a measure of the uncertainty or precision of an estimate</p>"
+  },
+  {
+    "slug": "dichotomous",
+    "title": "dichotomous",
+    "description": "<div class=\"flex flex-grow flex-col max-w-full\">\n<div class=\"min-h-[20px] text-message flex flex-col items-start whitespace-pre-wrap break-words [.text-message+&amp;]:mt-5 juice:w-full juice:items-end overflow-x-auto gap-2\" dir=\"auto\" data-message-author-role=\"assistant\" data-message-id=\"2bc05cfe-db96-477f-b73c-916e86300289\">\n<div class=\"flex w-full flex-col gap-1 juice:empty:hidden juice:first:pt-[3px]\">\n<div class=\"markdown prose w-full break-words dark:prose-invert light\">\n<p>Something that has two possible outcomes or categories, often used in statistics or research to describe variables that can only be classified into two distinct groups.</p>\n</div>\n</div>\n</div>\n</div>\n<div class=\"mt-1 flex gap-3 empty:hidden juice:-ml-3\">\n<div class=\"items-center justify-start rounded-xl p-1 flex\">\n<div class=\"flex items-center\">\n<div class=\"flex\"></div>\n<div class=\"flex items-center pb-0.5 juice:pb-0\">\n<div class=\"[&amp;_svg]:h-full [&amp;_svg]:w-full icon-md h-4 w-4\"></div>\n</div>\n</div>\n</div>\n</div>"
+  },
+  {
+    "slug": "false-negative",
+    "title": "false negative",
+    "description": "<p>when a test incorrectly indicates that a condition or effect is not present, when in reality it is</p>"
+  },
+  {
+    "slug": "false-positive",
+    "title": "false positive",
+    "description": "<p>when a statistical test incorrectly indicates that a condition or effect is present, when in reality it is not</p>"
+  },
+  {
+    "slug": "intervention",
+    "title": "intervention",
+    "description": "<p>a deliberate action or strategy implemented to produce a desired change or effect in a specific situation or system</p>"
+  },
+  {
+    "slug": "nhst",
+    "title": "NHST",
+    "description": "<p>Abbreviation of <span tabindex=\"0\" class=\"glossary-item-container\">null hypothesis<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">null hypothesis</span> <span class=\"glossary-item-description\">a statement in statistical testing that posits no significant difference or relationship between variables, serving as the baseline assumption until evidence suggests otherwise.</span></span></span> significance testing</p>"
+  },
+  {
+    "slug": "nonsignificant",
+    "title": "nonsignificant",
+    "description": "<p>a result in statistical testing that does not provide enough evidence (often a <span tabindex=\"0\" class=\"glossary-item-container\">p-value<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">p-value</span> <span class=\"glossary-item-description\">A p-value in statistics is a measure that helps determine the strength of evidence against the null hypothesis, with a lower p-value indicating stronger evidence against it.</span></span></span> &lt; 0.05) to reject the <span tabindex=\"0\" class=\"glossary-item-container\">null hypothesis<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">null hypothesis</span> <span class=\"glossary-item-description\">a statement in statistical testing that posits no significant difference or relationship between variables, serving as the baseline assumption until evidence suggests otherwise.</span></span></span>, suggesting that any observed effect may be due to chance</p>"
+  },
+  {
+    "slug": "null-hypothesis",
+    "title": "null hypothesis",
+    "description": "<p>a statement in statistical testing that posits no significant difference or relationship between variables, serving as the baseline assumption until evidence suggests otherwise.</p>"
+  },
+  {
+    "slug": "p-hacking",
+    "title": "p-hacking",
+    "description": "<p>the practice of manipulating or analyzing data in ways that increase the likelihood of obtaining <span tabindex=\"0\" class=\"glossary-item-container\">statistically significant<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">statistically significant</span> <span class=\"glossary-item-description\">a result in statistical testing that provides enough evidence to reject the null hypothesis, suggesting that an observed effect is likely not due to chance alone</span></span></span> results, often leading to false or misleading conclusions in scientific research</p>"
+  },
+  {
+    "slug": "p-value",
+    "title": "p-value",
+    "description": "<p>A <span tabindex=\"0\" class=\"glossary-item-container\">p-value<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">p-value</span> <span class=\"glossary-item-description\">A p-value in statistics is a measure that helps determine the strength of evidence against the null hypothesis, with a lower p-value indicating stronger evidence against it.</span></span></span> in statistics is a measure that helps determine the strength of evidence against the <span tabindex=\"0\" class=\"glossary-item-container\">null hypothesis<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">null hypothesis</span> <span class=\"glossary-item-description\">a statement in statistical testing that posits no significant difference or relationship between variables, serving as the baseline assumption until evidence suggests otherwise.</span></span></span>, with a lower p-value indicating stronger evidence against it.</p>"
+  },
+  {
+    "slug": "point-estimate",
+    "title": "point estimate",
+    "description": "<p class=\"wp-block-paragraph\">A single number calculated from sample data to estimate an unknown population parameter, like a mean or proportion</p>"
+  },
+  {
+    "slug": "power",
+    "title": "power",
+    "description": "<div class=\"flex flex-grow flex-col max-w-full\">\n<div class=\"min-h-[20px] text-message flex flex-col items-start whitespace-pre-wrap break-words [.text-message+&amp;]:mt-5 juice:w-full juice:items-end overflow-x-auto gap-2\" dir=\"auto\" data-message-author-role=\"assistant\" data-message-id=\"376444aa-6ecd-48ba-ad09-95330a24b100\">\n<div class=\"flex w-full flex-col gap-1 juice:empty:hidden juice:first:pt-[3px]\">\n<div class=\"markdown prose w-full break-words dark:prose-invert light\">\n<p>the probability that a study will correctly reject the <span tabindex=\"0\" class=\"glossary-item-container\">null hypothesis<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">null hypothesis</span> <span class=\"glossary-item-description\">a statement in statistical testing that posits no significant difference or relationship between variables, serving as the baseline assumption until evidence suggests otherwise.</span></span></span> when it is false, indicating the sensitivity of a test to detect an effect if it truly exists</p>\n</div>\n</div>\n</div>\n</div>\n<div class=\"mt-1 flex gap-3 empty:hidden juice:-ml-3\">\n<div class=\"items-center justify-start rounded-xl p-1 flex\">\n<div class=\"flex items-center\">\n<div class=\"flex\"></div>\n<div class=\"flex items-center pb-0.5 juice:pb-0\">\n<div class=\"[&amp;_svg]:h-full [&amp;_svg]:w-full icon-md h-4 w-4\"></div>\n</div>\n</div>\n</div>\n</div>"
+  },
+  {
+    "slug": "sample-size",
+    "title": "sample size",
+    "description": "<p>the number of individual observations or data points collected from a population for use in statistical analysis or experimentation</p>"
+  },
+  {
+    "slug": "significant",
+    "title": "statistically significant",
+    "description": "<p>a result in statistical testing that provides enough evidence to reject the <span tabindex=\"0\" class=\"glossary-item-container\">null hypothesis<span class=\"glossary-item-hidden-content\"><span class=\"glossary-item-header\">null hypothesis</span> <span class=\"glossary-item-description\">a statement in statistical testing that posits no significant difference or relationship between variables, serving as the baseline assumption until evidence suggests otherwise.</span></span></span>, suggesting that an observed effect is likely not due to chance alone</p>"
+  }
+]

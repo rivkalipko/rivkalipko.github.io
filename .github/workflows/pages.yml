@@ -22,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install WebP encoder
+        run: sudo apt-get update && sudo apt-get install -y webp
       - run: npm run build
         env:
           SITE_URL: ${{ vars.SITE_URL }}

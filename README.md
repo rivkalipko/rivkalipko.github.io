@@ -1,6 +1,6 @@
-# staging.rivka.me
+# rivka.me
 
-Static preview of [rivka.me](https://rivka.me), migrated from WordPress and designed for GitHub Pages at [staging.rivka.me](https://staging.rivka.me).
+Static rebuild of [rivka.me](https://rivka.me), migrated from WordPress and published with GitHub Pages from `rivkalipko/rivkalipko.github.io`.
 
 ## Build locally
 
@@ -17,10 +17,8 @@ Both are optional and set as GitHub Actions repository *variables* (Settings →
 
 | Variable | Purpose |
 | --- | --- |
-| `SITE_URL` | Canonical origin. Defaults to `https://staging.rivka.me`. |
-| `SUBSCRIBE_ENDPOINT` | `/subscribe` URL of the Worker in `worker/`. |
-
-The subscribe box only renders a working form when `SUBSCRIBE_ENDPOINT` is set; otherwise it shows a short placeholder.
+| `SITE_URL` | Canonical origin. Defaults to `https://rivka.me`. |
+| `SUBSCRIBE_ENDPOINT` | `/subscribe` URL of the Worker in `worker/`. Defaults to the deployed Worker. |
 
 ## Subscribers
 
@@ -57,10 +55,24 @@ Addresses are lowercased and validated before insert, and re-subscribing is a si
 
 1. Push this project to `rivkalipko/rivkalipko.github.io` on the `main` branch.
 2. In the repository’s **Settings → Pages**, select **GitHub Actions** as the source.
-3. Add and verify `staging.rivka.me` as the custom domain before changing DNS.
-4. Add a `CNAME` record for `staging.rivka.me` pointing to `rivkalipko.github.io`, then enable **Enforce HTTPS** after the certificate is ready.
+3. Set the custom domain to `rivka.me` and enable **Enforce HTTPS** after the certificate is ready.
+4. At the DNS host, point the apex at GitHub Pages:
 
-The deployment workflow, sitemap, RSS feed, search index, and existing URL structure are generated automatically. The production WordPress site at `rivka.me` remains untouched during staging.
+| Type | Host | Value |
+| --- | --- | --- |
+| A | `@` | `185.199.108.153` |
+| A | `@` | `185.199.109.153` |
+| A | `@` | `185.199.110.153` |
+| A | `@` | `185.199.111.153` |
+| AAAA | `@` | `2606:50c0:8000::153` |
+| AAAA | `@` | `2606:50c0:8001::153` |
+| AAAA | `@` | `2606:50c0:8002::153` |
+| AAAA | `@` | `2606:50c0:8003::153` |
+| CNAME | `www` | `rivkalipko.github.io` |
+
+Remove the old A record for `rivka.me` that pointed at WordPress (`164.92.78.175`).
+
+The deployment workflow, sitemap, RSS feed, search index, and existing URL structure are generated automatically.
 
 ## Content
 

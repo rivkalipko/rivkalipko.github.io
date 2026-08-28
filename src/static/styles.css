@@ -497,7 +497,6 @@ button { cursor: pointer; }
    -------------------------------------------------------------------------- */
 
 .archive-shell,
-.standalone-page,
 .glossary-page,
 .not-found,
 .post-layout {
@@ -1011,15 +1010,8 @@ html.no-js .blog-page .load-more { display: none; }
 .glossary-item-description { color: var(--muted); }
 
 /* --------------------------------------------------------------------------
-   Standalone pages
+   Glossary
    -------------------------------------------------------------------------- */
-
-.standalone-page { padding-top: var(--rhythm); }
-.standalone-page > header {
-  max-width: var(--measure);
-  margin: 0 auto 40px;
-}
-.standalone-page > header h1 { margin-bottom: 0; }
 
 .glossary-page,
 .not-found {

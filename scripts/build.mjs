@@ -8,7 +8,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = path.join(ROOT, "source", "wordpress");
 const OUTPUT = path.join(ROOT, "_site");
 const MEDIA_SOURCE = path.join(ROOT, "src", "media");
-const SITE_URL = process.env.SITE_URL || "https://staging.rivka.me";
+const SITE_URL = process.env.SITE_URL || "https://rivka.me";
 const WORDPRESS_URL = "https://rivka.me";
 const STYLES_CSS = minifyCss(fs.readFileSync(path.join(ROOT, "src", "static", "styles.css"), "utf8"));
 const SCRIPT_HREF = `/assets/site.js?${Math.trunc(fs.statSync(path.join(ROOT, "src", "static", "site.js")).mtimeMs)}`;
@@ -749,10 +749,14 @@ function buildBlog() {
 }
 
 function buildLegacyRedirects() {
-  const target = canonical("/blog/");
-  const redirect = (route) => writeRoute(route, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0; url=${target}"><link rel="canonical" href="${target}"><title>Writing — Rivka Lipkovitz</title></head><body><p>This archive moved to <a href="${target}">the blog</a>.</p></body></html>`);
-  for (let page = 2; page <= Math.ceil(generalPosts.length / 7); page += 1) redirect(`/blog/page/${page}/`);
-  redirect("/tag/featured/");
+  const blog = canonical("/blog/");
+  const home = canonical("/");
+  const redirect = (route, target, title, message) => writeRoute(route, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0; url=${target}"><link rel="canonical" href="${target}"><title>${escapeHtml(title)}</title></head><body><p>${message}</p></body></html>`);
+  for (let page = 2; page <= Math.ceil(generalPosts.length / 7); page += 1) {
+    redirect(`/blog/page/${page}/`, blog, "Writing — Rivka Lipkovitz", `This archive moved to <a href="${blog}">the blog</a>.`);
+  }
+  redirect("/tag/featured/", blog, "Writing — Rivka Lipkovitz", `This archive moved to <a href="${blog}">the blog</a>.`);
+  redirect("/prez/", home, "Rivka Lipkovitz", `This page is no longer published. <a href="${home}">Continue to the home page</a>.`);
 }
 
 function buildPosts() {
@@ -805,15 +809,6 @@ function buildTaxonomies() {
   }));
 }
 
-function buildPages() {
-  const campaign = pages.find((page) => page.slug === "prez");
-  if (campaign) {
-    const route = "/prez/";
-    const body = `<article class="standalone-page"><header><p class="eyebrow">MIT Undergraduate Association</p><h1>${escapeHtml(titleOf(campaign))}</h1></header><div class="prose">${cleanContent(campaign.content.rendered)}</div></article>`;
-    writeRoute(route, layout({ route, title: titleOf(campaign), description: descriptionOf(campaign, 34), body, bodyClass: "standalone" }));
-  }
-}
-
 function buildGlossary() {
   for (const entry of glossary) {
     const route = `/glossary/${entry.slug}/`;
@@ -837,7 +832,7 @@ function buildFeeds() {
 <rss version="2.0"><channel><title>Rivka Lipkovitz</title><link>${SITE_URL}/blog/</link><description>Writing on data, causal inference, learning, and fencing.</description>${items}</channel></rss>\n`);
 
   const routes = [
-    "/", "/blog/", "/prez/", "/author/rivka/",
+    "/", "/blog/", "/author/rivka/",
     ...allPosts.map((post) => `/${post.slug}/`),
     ...categories.filter((category) => category.count > 0).map((category) => `/${category.slug}/`),
     ...glossary.map((entry) => `/glossary/${entry.slug}/`)
@@ -867,7 +862,7 @@ function collectMedia() {
   const media = new Map();
   const values = [
     ...allPosts.flatMap((post) => [post.content.rendered, post.excerpt.rendered, post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""]),
-    ...pages.flatMap((page) => [page.content.rendered, page._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""]),
+    ...pages.filter((page) => page.slug !== "prez").flatMap((page) => [page.content.rendered, page._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""]),
     ...glossary.map((entry) => entry.description),
     "https://rivka.me/wp-content/uploads/2024/05/cropped-android-chrome-512x512-1.png"
   ];
@@ -916,7 +911,6 @@ buildBlog();
 buildLegacyRedirects();
 buildPosts();
 buildTaxonomies();
-buildPages();
 buildGlossary();
 buildFeeds();
 buildSearch();

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ARTICLE_EDITS, GLOSSARY_EDITS } from "../source/editorial-edits.mjs";
+import { ARTICLE_EDITS, GLOSSARY_EDITS, PAGE_EDITS } from "../source/editorial-edits.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = path.join(ROOT, "source", "wordpress");
@@ -25,6 +25,7 @@ for (const post of [...generalPosts, ...stsPosts]) uniquePosts.set(post.id, post
 const allPosts = [...uniquePosts.values()].sort((a, b) => new Date(b.date_gmt || b.date) - new Date(a.date_gmt || a.date));
 const categoryById = new Map(categories.map((category) => [category.id, category]));
 const articleEditsBySlug = new Map(ARTICLE_EDITS.map((entry) => [entry.slug, entry.replacements]));
+const pageEditsBySlug = new Map(PAGE_EDITS.map((entry) => [entry.slug, entry.replacements]));
 const articleSlugs = new Set(allPosts.map((post) => post.slug));
 const missingEditorialReviews = allPosts.filter((post) => !articleEditsBySlug.has(post.slug));
 const orphanedEditorialReviews = ARTICLE_EDITS.filter((entry) => !articleSlugs.has(entry.slug));
@@ -157,6 +158,58 @@ function readJpegSize(buffer) {
   return null;
 }
 
+function readTiffOrientation(tiff) {
+  if (tiff.length < 10) return 1;
+  const little = tiff[0] === 0x49 && tiff[1] === 0x49;
+  const big = tiff[0] === 0x4d && tiff[1] === 0x4d;
+  if (!little && !big) return 1;
+  const u16 = (offset) => (little ? tiff.readUInt16LE(offset) : tiff.readUInt16BE(offset));
+  const u32 = (offset) => (little ? tiff.readUInt32LE(offset) : tiff.readUInt32BE(offset));
+  if (u16(2) !== 42) return 1;
+  const ifd = u32(4);
+  if (ifd + 2 > tiff.length) return 1;
+  const count = u16(ifd);
+  for (let i = 0; i < count; i += 1) {
+    const entry = ifd + 2 + i * 12;
+    if (entry + 12 > tiff.length) break;
+    if (u16(entry) === 0x0112 && u16(entry + 2) === 3) {
+      const value = u16(entry + 8);
+      return value >= 1 && value <= 8 ? value : 1;
+    }
+  }
+  return 1;
+}
+
+function readJpegOrientation(buffer) {
+  if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return 1;
+  let offset = 2;
+  while (offset + 4 < buffer.length) {
+    if (buffer[offset] !== 0xff) break;
+    const marker = buffer[offset + 1];
+    if (marker === 0xff) {
+      offset += 1;
+      continue;
+    }
+    if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) {
+      offset += 2;
+      continue;
+    }
+    if (offset + 4 >= buffer.length) break;
+    const length = buffer.readUInt16BE(offset + 2);
+    if (length < 2) break;
+    if (marker === 0xe1 && offset + 10 <= buffer.length) {
+      const payload = offset + 4;
+      if (buffer.toString("ascii", payload, payload + 4) === "Exif" && buffer[payload + 4] === 0 && buffer[payload + 5] === 0) {
+        const orientation = readTiffOrientation(buffer.subarray(payload + 6, offset + 2 + length));
+        if (orientation !== 1) return orientation;
+      }
+    }
+    if (marker >= 0xc0 && marker <= 0xc3) break;
+    offset += 2 + length;
+  }
+  return 1;
+}
+
 function readWebpSize(buffer) {
   if (buffer.toString("ascii", 0, 4) !== "RIFF" || buffer.toString("ascii", 8, 12) !== "WEBP") return null;
   const type = buffer.toString("ascii", 12, 16);
@@ -211,6 +264,51 @@ function resolveCwebp() {
   return "";
 }
 
+function resolveJpegtran() {
+  for (const bin of ["jpegtran", "/Users/rivka/miniconda3/bin/jpegtran", "/opt/homebrew/bin/jpegtran", "/usr/local/bin/jpegtran", "/usr/bin/jpegtran"]) {
+    try {
+      execFileSync(bin, ["-help"], { stdio: "ignore" });
+      return bin;
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      return bin;
+    }
+  }
+  return "";
+}
+
+const JPEG_ORIENT_TRANSFORMS = {
+  2: ["-flip", "horizontal"],
+  3: ["-rotate", "180"],
+  4: ["-flip", "vertical"],
+  5: ["-transpose"],
+  6: ["-rotate", "90"],
+  7: ["-transverse"],
+  8: ["-rotate", "270"]
+};
+
+function bakeJpegOrientation(file) {
+  const fd = fs.openSync(file, "r");
+  const size = Math.min(fs.fstatSync(fd).size, 1024 * 1024);
+  const buffer = Buffer.alloc(size);
+  fs.readSync(fd, buffer, 0, size, 0);
+  fs.closeSync(fd);
+  const orientation = readJpegOrientation(buffer);
+  const transform = JPEG_ORIENT_TRANSFORMS[orientation];
+  if (!transform) return;
+  const jpegtran = resolveJpegtran();
+  if (!jpegtran) {
+    throw new Error(`JPEG ${path.relative(ROOT, file)} has EXIF orientation ${orientation}, but jpegtran is not available to auto-orient it`);
+  }
+  const tmp = `${file}.${process.pid}.oriented.jpg`;
+  try {
+    execFileSync(jpegtran, ["-copy", "none", ...transform, "-outfile", tmp, file], { stdio: "ignore" });
+    fs.renameSync(tmp, file);
+  } finally {
+    if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+  }
+}
+
 function outputDimensions(width, height) {
   const max = Math.max(width, height);
   if (max <= IMAGE_MAX_SIDE) return { width, height };
@@ -231,9 +329,10 @@ function optimizeCopiedMedia() {
   const files = walkFiles(mediaRoot).filter((file) => /\.(jpe?g|png|webp)$/i.test(file));
   let converted = 0;
   for (const file of files) {
+    const ext = path.extname(file).toLowerCase();
+    if (ext === ".jpg" || ext === ".jpeg") bakeJpegOrientation(file);
     const publicPath = fileToPublicPath(file);
     const size = readImageSize(file) || { width: 0, height: 0 };
-    const ext = path.extname(file).toLowerCase();
     const originalBytes = fs.statSync(file).size;
     let href = publicPath;
     let width = size.width;
@@ -374,6 +473,10 @@ function applyValidatedReplacements(value, replacements, label) {
 
 function editedPostContent(post) {
   return applyValidatedReplacements(post.content.rendered, articleEditsBySlug.get(post.slug), post.slug);
+}
+
+function editedPageContent(page) {
+  return applyValidatedReplacements(page.content.rendered, pageEditsBySlug.get(page.slug), page.slug);
 }
 
 // KaTeX is three CDN requests, so only the articles that actually carry math pay for it.
@@ -683,10 +786,7 @@ function readNext(currentPost) {
 }
 
 function postMeta(post) {
-  const parts = [
-    "by <a href=\"/author/rivka/\" rel=\"author\">Rivka Lipkovitz</a>",
-    `<time datetime="${isoDate(post)}">${formatDate(post)}</time>`
-  ];
+  const parts = [`<time datetime="${isoDate(post)}">${formatDate(post)}</time>`];
   const inCategories = categoryLinks(post);
   if (inCategories) parts.push(inCategories);
   return parts.join('<span aria-hidden="true"> / </span>');
@@ -711,9 +811,9 @@ function postBody(post) {
 
 function buildHome() {
   const about = pages.find((page) => page.slug === "about");
-  const description = "MIT student studying mathematics, economics, and computer science, with interests in causal inference, econometrics, data science, and fencing.";
+  const description = "MIT sophomore studying mathematics, computer science, and economics, interested in causal inference and currently researching applications of machine learning to econometrics.";
   const body = markFirstImagePriority(
-    `<section class="home-shell">${cleanContent(about.content.rendered)}</section>`,
+    `<section class="home-shell">${cleanContent(editedPageContent(about))}</section>`,
     "(max-width: 781px) 100vw, 50vw"
   );
   const extraHead = `<script type="application/ld+json">${jsonLd({

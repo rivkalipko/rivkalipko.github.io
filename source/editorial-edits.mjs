@@ -265,3 +265,20 @@ export const ARTICLE_EDITS = [
 ];
 
 export const GLOSSARY_EDITS = [];
+
+export const PAGE_EDITS = [
+  { slug: "about", replacements: [
+    [
+      `I’m a sophomore at MIT studying mathematics, economics, and computer science. I&#8217;m interested in <a href="https://rivka.me/causal-inference/">causal inference</a>, econometrics, and data science.`,
+      `I’m a sophomore at MIT studying mathematics, computer science, and economics. I&#8217;m interested in <a href="https://rivka.me/causal-inference/">causal inference</a> and am currently researching applications of machine learning to econometrics.`
+    ],
+    [
+      `I&#8217;ve been fencing for eleven years. I spent five years fencing saber before deciding to switch to foil in 2019. I mostly practice foil now, but still occasionally dabble in epee and saber. I&#8217;m also a certified referee in all three weapons, with experience at the national level.`,
+      `I&#8217;ve been fencing for twelve years. I spent five years fencing saber before deciding to switch to foil in 2019. I also occasionally dabble in epee and saber and am a certified referee in all three weapons.`
+    ],
+    [
+      `In my free time, I enjoy writing on my <a href="https://rivka.me/blog/">blog</a>, solving Rubik&#8217;s cubes, and making cool things with my 3D printer.`,
+      `In my free time, I enjoy writing on my <a href="https://rivka.me/blog/">blog</a>, hanging out with my friends, and working on new projects with coding agents.`
+    ]
+  ] }
+];

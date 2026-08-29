@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -124,6 +125,17 @@ function fileToPublicPath(absFile) {
 function rememberImage(publicPath, record) {
   imageMeta.set(publicPath, record);
   if (record.href !== publicPath) imageMeta.set(record.href, record);
+}
+
+function fingerprintMediaUrl(publicPath, mediaRoot) {
+  const cleanPath = publicPath.split("?", 1)[0];
+  const prefix = "/assets/media/";
+  if (!cleanPath.startsWith(prefix)) return publicPath;
+  const relative = decodeURIComponent(cleanPath.slice(prefix.length));
+  const file = path.join(mediaRoot, relative);
+  if (!fs.existsSync(file)) return publicPath;
+  const digest = createHash("sha256").update(fs.readFileSync(file)).digest("hex").slice(0, 12);
+  return `${cleanPath}?v=${digest}`;
 }
 
 function readPngSize(buffer) {
@@ -379,6 +391,13 @@ function optimizeCopiedMedia() {
         srcset = "";
       }
     }
+    href = fingerprintMediaUrl(href, mediaRoot);
+    if (srcset) {
+      srcset = srcset.split(",").map((candidate) => {
+        const [url, descriptor] = candidate.trim().split(/\s+/, 2);
+        return `${fingerprintMediaUrl(url, mediaRoot)} ${descriptor}`;
+      }).join(", ");
+    }
     rememberImage(publicPath, { href, width, height, srcset });
   }
   return converted;
@@ -401,7 +420,7 @@ function preloadImageTag(href, sizes = "") {
   if (!href) return "";
   const record = mediaRecord(href);
   const imageHref = record?.href || href;
-  const type = imageHref.endsWith(".webp") ? ' type="image/webp"' : "";
+  const type = imageHref.split("?", 1)[0].endsWith(".webp") ? ' type="image/webp"' : "";
   if (record?.srcset) {
     const imagesizes = sizes || "(max-width: 820px) 100vw, 820px";
     const fallback = record.srcset.split(",")[0].trim().split(/\s+/)[0];
@@ -459,6 +478,24 @@ function cleanImageTag(tag) {
   if (!/\sdecoding=/i.test(output)) output = output.replace(/<img/i, '<img decoding="async"');
   if (!/\ssizes=/i.test(output)) output = output.replace(/<img/i, '<img sizes="(max-width: 820px) 100vw, 820px"');
   if (!/\sloading=/i.test(output)) output = output.replace(/<img/i, '<img loading="lazy"');
+  return output;
+}
+
+function cleanIframeTag(tag) {
+  const dataSource = tag.match(/\sdata-src=(['"])(.*?)\1/i)?.[2];
+  const regularSource = tag.match(/\ssrc=(['"])(.*?)\1/i)?.[2];
+  const chosenSource = dataSource || regularSource;
+  let output = tag
+    .replace(/\sdata-src=(['"])[\s\S]*?\1/gi, "")
+    .replace(/\sdata-load-mode=(['"])[\s\S]*?\1/gi, "")
+    .replace(/\ssrc=(['"])[\s\S]*?\1/gi, "")
+    .replace(/\sclass=(['"])(.*?)\1/i, (_, quote, classes) => {
+      const cleaned = classes.split(/\s+/).filter((name) => name && name !== "lazyload").join(" ");
+      return cleaned ? ` class=${quote}${cleaned}${quote}` : "";
+    });
+
+  if (chosenSource) output = output.replace(/<iframe/i, `<iframe src="${escapeHtml(decodeEntities(chosenSource))}"`);
+  if (!/\sloading=/i.test(output)) output = output.replace(/<iframe/i, '<iframe loading="lazy"');
   return output;
 }
 
@@ -553,6 +590,7 @@ function cleanContent(value = "") {
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<img\b[^>]*>/gi, cleanImageTag)
+    .replace(/<iframe\b[^>]*>/gi, cleanIframeTag)
     .replace(/\srel=(['"])noopener nofollow\1/gi, ' rel="noopener noreferrer nofollow"')
     .replace(/https?:\/\/i\d\.wp\.com\/rivka\.me\/wp-content\/uploads\/([^?"'<>\s]+)(?:\?[^"'<>\s]*)?/gi, (_, relative) => `/assets/media/${decodeURIComponent(relative)}`)
     .replace(/https?:\/\/rivka\.me\/wp-content\/uploads\/([^?"'<>\s]+)(?:\?[^"'<>\s]*)?/gi, (_, relative) => `/assets/media/${decodeURIComponent(relative)}`)

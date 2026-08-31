@@ -35,6 +35,10 @@ if (missingEditorialReviews.length || orphanedEditorialReviews.length) {
 }
 
 const CATEGORY_LABELS = new Map([[1, "Other"]]);
+const GA_MEASUREMENT_ID = "G-PVX09PD3ZZ";
+const GA_HEAD = `
+  <script async src="https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","${GA_MEASUREMENT_ID}");</script>`;
 const MATH_HEAD = `
   <link rel="stylesheet" href="/assets/katex/katex.min.css">
   <script defer src="/assets/katex/katex.min.js"></script>
@@ -720,6 +724,7 @@ function layout({ route, title, description, body, image = "", type = "website",
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${socialImage}">${articleMeta}
   <script>document.documentElement.classList.replace("no-js","js");try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"}catch(e){document.documentElement.dataset.theme="dark"}</script>
+  ${GA_HEAD}
   ${extraHead}
 </head>
 <body class="${escapeHtml(bodyClass)}">
